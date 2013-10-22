@@ -1,5 +1,11 @@
 BEGIN;
 
+CREATE EXTENSION IF NOT EXISTS HSTORE;
+CREATE TABLE contacts (
+    contact_id SERIAL PRIMARY KEY,
+    data       HSTORE
+);
+
 CREATE OR REPLACE FUNCTION random_string(
     string_length INT4
 ) RETURNS TEXT LANGUAGE plpgsql AS $$
@@ -41,12 +47,6 @@ BEGIN
     RETURN COALESCE(adr, '{}'::hstore);
 END;
 $$;
-
-CREATE EXTENSION IF NOT EXISTS HSTORE;
-CREATE TABLE contacts (
-    contact_id SERIAL PRIMARY KEY,
-    data       HSTORE
-);
 
 CREATE OR REPLACE FUNCTION random_phone(
 ) RETURNS TEXT LANGUAGE plpgsql as $$
