@@ -89,6 +89,7 @@ DECLARE
     email  HSTORE;
     url    HSTORE;
     geo    HSTORE := '{}';
+    smoke  HSTORE := '{}';
     ncount INT[]  := '{0,0,0,1,1,1,1,2,2,2,3,3,4,5,6,7}';
     ntypes TEXT[] := '{mobile,cell,work,main,pager,cell,iPhone,mobile,personal,business}';
     etypes TEXT[] := '{work,personal,business}';
@@ -174,13 +175,21 @@ BEGIN
             geo := format('geo => %s', geo)::hstore;
         END IF;
 
+        IF random() < 0.01 THEN
+            smoke := format(
+                '{ "x-smoking" => %s }',
+                CASE WHEN random() < 0.7 THEN true ELSE false END
+            )::hstore;
+       END IF;
+
+        -- Add: IM, social, nickname, x-smoker.
         INSERT INTO contacts (data) VALUES (
             name
             || format('adr => %s', adr)::hstore
             || format('tel => %s', tel)::hstore
             || format('url => %s', url)::hstore
             || format('email => %s', email)::hstore
-            || geo
+            || geo || smoke
         );
         EXIT;
     END LOOP;
