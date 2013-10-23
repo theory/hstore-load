@@ -90,12 +90,31 @@ DECLARE
     url    HSTORE;
     geo    HSTORE := '{}';
     smoke  HSTORE := '{}';
+    bday   HSTORE := '{}';
     ncount INT[]  := '{0,0,0,1,1,1,1,2,2,2,3,3,4,5,6,7}';
     ntypes TEXT[] := '{mobile,cell,work,main,pager,cell,iPhone,mobile,personal,business}';
     etypes TEXT[] := '{work,personal,business}';
     utypes TEXT[] := '{blog,social,personal,work,journal,blog,blog}';
     gcount INT[]  := '{0,0,0,0,0,0,1,1,2}';
     tlds   TEXT[] := '{com,net,org,com,net,org,com,net,org,edu,edu,cc,co,fm,pm,so,io}';
+    dfmts  TEXT[] := ARRAY[
+        'YYYY-MM-DD',
+        'YYYY-MM-DD',
+        'YYYY-MM-DD',
+        'YYYY-MM-DD',
+        'YYYY-MM-DD',
+        'YYYY-MM-DD',
+        'YYYY-MM-DD"T"HH24:MI:SS',
+        'YYYY-MM-DD"T"HH24:MI:SS',
+        '"T"HH24:MI:SS',
+        '--MM-DD',
+        '--MM-DD',
+        '--MM-DD',
+        '---DD',
+        'YYYY',
+        'YYYY',
+        'YYYY-MM'
+    ];
 BEGIN
     FOR row IN SELECT * FROM us LOOP
         name := hstore(ARRAY[
@@ -180,7 +199,14 @@ BEGIN
                 '{ "x-smoker" => %s }',
                 CASE WHEN random() < 0.7 THEN true ELSE false END
             )::hstore;
-       END IF;
+        END IF;
+
+        IF random() <= 0.1 THEN
+            bday := hstore( 'bday', to_char(
+                NOW() - '1 year'::INTERVAL * ROUND(RANDOM() * 100),
+                dfmts[ floor( (random() * array_upper(dfmts, 1)) + 1 )::int]
+            ) );
+        END IF;
 
         -- Add: IM, social, nickname.
         INSERT INTO contacts (data) VALUES (
@@ -189,9 +215,8 @@ BEGIN
             || format('tel => %s', tel)::hstore
             || format('url => %s', url)::hstore
             || format('email => %s', email)::hstore
-            || geo || smoke
+            || geo || smoke || bday
         );
-        EXIT;
     END LOOP;
 END;
 $$;
