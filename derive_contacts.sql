@@ -175,14 +175,14 @@ BEGIN
             geo := format('geo => %s', geo)::hstore;
         END IF;
 
-        IF random() < 0.01 THEN
+        IF random() <= 0.01 THEN
             smoke := format(
-                '{ "x-smoking" => %s }',
+                '{ "x-smoker" => %s }',
                 CASE WHEN random() < 0.7 THEN true ELSE false END
             )::hstore;
        END IF;
 
-        -- Add: IM, social, nickname, x-smoker.
+        -- Add: IM, social, nickname.
         INSERT INTO contacts (data) VALUES (
             name
             || format('adr => %s', adr)::hstore
