@@ -82,16 +82,18 @@ SET hstore.root_hash_decorated   = TRUE;
 
 DO $$
 DECLARE
-    row  us;
-    name HSTORE;
-    adr  HSTORE;
-    tel  HSTORE;
-    email HSTORE;
-    url  HSTORE;
-    ncount INT[] := '{0,0,0,1,1,1,1,2,2,2,3,3,4,5,6,7}';
+    row    us;
+    name   HSTORE;
+    adr    HSTORE;
+    tel    HSTORE;
+    email  HSTORE;
+    url    HSTORE;
+    geo    HSTORE := '{}';
+    ncount INT[]  := '{0,0,0,1,1,1,1,2,2,2,3,3,4,5,6,7}';
     ntypes TEXT[] := '{mobile,cell,work,main,pager,cell,iPhone,mobile,personal,business}';
     etypes TEXT[] := '{work,personal,business}';
     utypes TEXT[] := '{blog,social,personal,work,journal,blog,blog}';
+    gcount INT[]  := '{0,0,0,0,0,0,1,1,2}';
     tlds   TEXT[] := '{com,net,org,com,net,org,com,net,org,edu,edu,cc,co,fm,pm,so,io}';
 BEGIN
     FOR row IN SELECT * FROM us LOOP
@@ -158,13 +160,29 @@ BEGIN
             )::hstore;
         END LOOP;
 
+        FOR i IN 1..gcount[ floor( (random() * array_upper(gcount, 1)) + 1 )::int] LOOP
+            -- http://answers.yahoo.com/question/index?qid=20070729220301AA6Ct4s
+            geo := geo || format(
+                '[[ %s, { lat => %s, long => %s } ]]',
+                etypes[ floor( (random() * array_upper(etypes, 1)) + 1 )::int],
+                random() * (-124.626080 + 62.361014) - 62.361014,
+                random() * (48.987386 - 18.005611) + 18.005611
+            );
+        END LOOP;
+
+        IF (geo -> 0) IS NOT NULL THEN
+            geo := format('geo => %s', geo)::hstore;
+        END IF;
+
         INSERT INTO contacts (data) VALUES (
             name
             || format('adr => %s', adr)::hstore
             || format('tel => %s', tel)::hstore
             || format('url => %s', url)::hstore
             || format('email => %s', email)::hstore
+            || geo
         );
+        EXIT;
     END LOOP;
 END;
 $$;
