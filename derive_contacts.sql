@@ -88,9 +88,9 @@ DECLARE
     tel    HSTORE;
     email  HSTORE;
     url    HSTORE;
-    geo    HSTORE := '{}';
-    smoke  HSTORE := '{}';
+    geo    HSTORE;
     bday   HSTORE := '{}';
+    xstuff HSTORE := '{}';
     ncount INT[]  := '{0,0,0,1,1,1,1,2,2,2,3,3,4,5,6,7}';
     ntypes TEXT[] := '{mobile,cell,work,main,pager,cell,iPhone,mobile,personal,business}';
     etypes TEXT[] := '{work,personal,business}';
@@ -180,6 +180,7 @@ BEGIN
             )::hstore;
         END LOOP;
 
+        geo := '[]';
         FOR i IN 1..gcount[ floor( (random() * array_upper(gcount, 1)) + 1 )::int] LOOP
             -- http://answers.yahoo.com/question/index?qid=20070729220301AA6Ct4s
             geo := geo || format(
@@ -187,18 +188,11 @@ BEGIN
                 etypes[ floor( (random() * array_upper(etypes, 1)) + 1 )::int],
                 random() * (-124.626080 + 62.361014) - 62.361014,
                 random() * (48.987386 - 18.005611) + 18.005611
-            );
+            )::hstore;
         END LOOP;
 
         IF (geo -> 0) IS NOT NULL THEN
             geo := format('geo => %s', geo)::hstore;
-        END IF;
-
-        IF random() <= 0.01 THEN
-            smoke := format(
-                '{ "x-smoker" => %s }',
-                CASE WHEN random() < 0.7 THEN true ELSE false END
-            )::hstore;
         END IF;
 
         IF random() <= 0.1 THEN
@@ -206,16 +200,59 @@ BEGIN
                 NOW() - '1 year'::INTERVAL * ROUND(RANDOM() * 100),
                 dfmts[ floor( (random() * array_upper(dfmts, 1)) + 1 )::int]
             ) );
+        ELSE
+            bday := '{}';
         END IF;
 
-        -- Add: IM, social, nickname.
+        -- Random x- fields.
+        xstuff := '{}';
+        IF random() <= 0.01 THEN
+            xstuff := format(
+                '{ "x-smoker" => %s }',
+                CASE WHEN random() < 0.7 THEN true ELSE false END
+            )::hstore;
+        END IF;
+
+        IF random() <= 0.7 THEN
+            xstuff := xstuff || hstore('x-twitter', row.first_name || '_' || row.last_name);
+        END IF;
+
+        IF random() <= 0.7 THEN
+            xstuff := xstuff || hstore('x-facebook', row.first_name || '_' || row.last_name);
+        END IF;
+
+        IF random() <= 0.4 THEN
+            xstuff := xstuff || hstore('x-aim', row.first_name || '_' || row.last_name);
+        END IF;
+
+        IF random() <= 0.1 THEN
+            xstuff := xstuff || hstore('x-jabber', row.first_name || '_' || row.last_name);
+        END IF;
+
+        IF random() <= 0.2 THEN
+            xstuff := xstuff || hstore('x-google-talk', row.first_name || '_' || row.last_name);
+        END IF;
+
+        IF random() <= 0.2 THEN
+            xstuff := xstuff || hstore('x-skype', row.first_name || '_' || row.last_name);
+        END IF;
+
+        IF random() <= 0.2 THEN
+            xstuff := xstuff || hstore(
+                'x-anniversary',
+                to_char(
+                    NOW() - '1 year'::INTERVAL * ROUND(RANDOM() * 55),
+                    dfmts[ floor( (random() * array_upper(dfmts, 1)) + 1 )::int]
+            ) );
+        END IF;
+
         INSERT INTO contacts (data) VALUES (
             name
             || format('adr => %s', adr)::hstore
             || format('tel => %s', tel)::hstore
             || format('url => %s', url)::hstore
             || format('email => %s', email)::hstore
-            || geo || smoke || bday
+            || geo || bday || xstuff
         );
     END LOOP;
 END;
