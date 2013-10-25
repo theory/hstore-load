@@ -1,6 +1,5 @@
 #!/bin/bash
 
-
 USCOUNT=0
 CACOUNT=0
 UKCOUNT=0
