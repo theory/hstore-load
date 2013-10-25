@@ -26,86 +26,131 @@ $$;
 CREATE OR REPLACE FUNCTION address(
     type          TEXT,
     in_city       TEXT,
-	in_country    TEXT,
+    in_country    TEXT,
     exclude_email TEXT
 ) RETURNS HSTORE LANGUAGE PLPGSQL AS $$
 DECLARE
     adr hstore;
 BEGIN
     IF in_country = 'USA' THEN
-	    SELECT format('[[%I, {
-	        "street-address" => %I,
-	        "locality"       => %I,
-	        "region"         => %I,
-	        "postal-code"    => %I,
-	        "country-name"   => %I
-	    }]]', type, address, city, state, zip, in_country)::hstore
-	     INTO adr
-	     FROM us
-	    WHERE city = in_city
-	      AND email <> exclude_email
-	    ORDER BY random()
-	    LIMIT 1;
-	ELSIF in_country = 'Canada' THEN
-	    SELECT format('[[%I, {
-	        "street-address" => %I,
-	        "locality"       => %I,
-	        "region"         => %I,
-	        "postal-code"    => %I,
-	        "country-name"   => %I
-	    }]]', type, address, city, province, zip, in_country)::hstore
-	     INTO adr
-	     FROM ca
-	    WHERE city = in_city
-	      AND email <> exclude_email
-	    ORDER BY random()
-	    LIMIT 1;
-	ELSE
-	    SELECT format('[[%I, {
-	        "street-address" => %I,
-	        "locality"       => %I,
-	        "region"         => %I,
-	        "postal-code"    => %I,
-	        "country-name"   => %I
-	    }]]', type, address, city, county, zip, 'United Kingdom')::hstore
-	     INTO adr
-	     FROM uk
-	    WHERE city = in_city
-	      AND email <> exclude_email
-	    ORDER BY random()
-	    LIMIT 1;
-	END IF;
+        SELECT format('[[%I, {
+            "street-address" => %I,
+            "locality"       => %I,
+            "region"         => %I,
+            "postal-code"    => %I,
+            "country-name"   => %I
+        }]]', type, address, city, state, zip, in_country)::hstore
+         INTO adr
+         FROM us
+        WHERE city = in_city
+          AND email <> exclude_email
+        ORDER BY random()
+        LIMIT 1;
+    ELSIF in_country = 'Canada' THEN
+        SELECT format('[[%I, {
+            "street-address" => %I,
+            "locality"       => %I,
+            "region"         => %I,
+            "postal-code"    => %I,
+            "country-name"   => %I
+        }]]', type, address, city, province, zip, in_country)::hstore
+         INTO adr
+         FROM ca
+        WHERE city = in_city
+          AND email <> exclude_email
+        ORDER BY random()
+        LIMIT 1;
+    ELSE
+        SELECT format('[[%I, {
+            "street-address" => %I,
+            "locality"       => %I,
+            "region"         => %I,
+            "postal-code"    => %I,
+            "country-name"   => %I
+        }]]', type, address, city, county, zip, 'United Kingdom')::hstore
+         INTO adr
+         FROM uk
+        WHERE city = in_city
+          AND email <> exclude_email
+        ORDER BY random()
+        LIMIT 1;
+    END IF;
     RETURN COALESCE(adr, '{}'::hstore);
-END;
-
-CREATE OR REPLACE FUNCTION random_phone(
-) RETURNS TEXT LANGUAGE plpgsql as $$
-DECLARE
-    formats text[] := '{
-        (%s) %s-%s,
-        (%s) %s-%s,
-        (%s) %s-%s,
-        %s-%s-%s,
-        %s-%s-%s,
-        %s-%s-%s,
-        +1-%s-%s-%s,
-        +1 (%s) %s-%s,
-        %2$s-%3$s,
-        %s-%s-%s x%s,
-        %2$s-%3$s x%s,
-        +1 (%s) %s-%s x%s
-    }';
-BEGIN
-    RETURN format(
-        formats[ floor( (random() * array_upper(formats, 1)) + 1 )::int],
-        trunc(random() * (799-201) + 201),
-        lpad(trunc(random() * (201-999) + 999)::text,  3, '0'),
-        lpad(trunc(random() * (100-9999) + 9999)::text, 4, '0'),
-        trunc(random() * (1-1024) + 1024)::text
-    );
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION random_phone(
+    country_code INT
+) RETURNS TEXT LANGUAGE plpgsql as $$
+DECLARE
+    formats text[];
+BEGIN
+    IF country_code = 1 THEN
+        formats := '{
+            (%s) %s-%s,
+            (%s) %s-%s,
+            (%s) %s-%s,
+            %s-%s-%s,
+            %s-%s-%s,
+            %s-%s-%s,
+            +1-%s-%s-%s,
+            +1 (%s) %s-%s,
+            %2$s-%3$s,
+            %s-%s-%s x%s,
+            %2$s-%3$s x%s,
+            +1 (%s) %s-%s x%s
+        }';
+        RETURN format(
+            formats[ floor( (random() * array_upper(formats, 1)) + 1 )::int],
+            trunc(random() * (799-201) + 201),
+            lpad(trunc(random() * (201-999) + 999)::text,  3, '0'),
+            lpad(trunc(random() * (100-9999) + 9999)::text, 4, '0'),
+            trunc(random() * (1-1024) + 1024)::text
+        );
+    ELSIF country_code = 44 THEN
+        formats := '{
+            (020) %2$s %3$s,
+            (020) %2$s %3$s,
+            (020) %2$s %3$s,
+            +44 20 %2$s %3$s,
+            +44 20 %2$s %3$s,
+            +44 20 %2$s %3$s,
+            (029) %2$s %3$s,
+            +44 29 %2$s %3$s,
+            (0113) %1$s %2$s,
+            +44 113 %1$s %2$s,
+            (0116) %1$s %2$s,
+            +44 116 %1$s %2$s,
+            (0131) %1$s %2$s,
+            +44 131 %1$s %2$s,
+            (0151) %1$s %2$s,
+            +44 151 %1$s %2$s,
+            (01382) %5$s,
+            +44 1382 %5$s,
+            (01386) %5$s,
+            +44 1386 %5$s,
+            (01865) %5$s,
+            +44 1865 %5$s,
+            (01792) %5$s,
+            +44 1792 %5$s,
+            (01204) %4$s,
+            +44 1204 %4$s,
+            (015396) %4$s,
+            +44 15396 %4$s,
+            (016977) %2$s,
+            +44 16977 %2$s
+        }';
+        RETURN format(
+            formats[ floor( (random() * array_upper(formats, 1)) + 1 )::int],
+            lpad(trunc(random() * (201-999)  + 999)::text,  3, '0'),
+            lpad(trunc(random() * (100-9999) + 9999)::text, 4, '0'),
+            lpad(trunc(random() * (100-9999) + 9999)::text, 4, '0'),
+            lpad(trunc(random() * (100-9999) + 9999)::text, 5, '0'),
+            lpad(trunc(random() * (100-9999) + 9999)::text, 6, '0')
+        );
+    END IF;
+END;
+$$;
 
 SET hstore.pretty_print          = TRUE;
 SET hstore.array_square_brackets = TRUE;
@@ -150,15 +195,15 @@ DECLARE
 BEGIN
     FOR row IN
         SELECT first_name, last_name, company, address, city, state, zip,
-               us.email, phone, fax, web, 'USA' AS country
+               us.email, phone, fax, web, 'USA' AS country, 1 AS country_code
           FROM us
         UNION
         SELECT first_name, last_name, company, address, city, province, zip,
-               ca.email, phone, fax, web, 'Canada' AS country
+               ca.email, phone, fax, web, 'Canada' AS country, 1 AS country_code
           FROM ca
         UNION
         SELECT first_name, last_name, company, address, city, county, zip,
-               uk.email, phone, null, web, 'UK' AS country
+               uk.email, phone, null, web, 'UK' AS country, 44 AS country_coed
           FROM uk
     LOOP
         name := hstore(ARRAY[
@@ -179,13 +224,23 @@ BEGIN
             }]]',
             row.address, row.city, row.state, row.zip, row.country
         )::hstore || CASE WHEN random() > 0.5 THEN '[]'::hstore ELSE
-            address( type := 'work', in_city := row.city, exclude_email := row.email )
+            address(
+                type          := 'work',
+                in_city       := row.city,
+                in_country    := row.country,
+                exclude_email := row.email
+            )
         END || CASE WHEN random() > 0.05 THEN  '[]'::hstore ELSE
-            address( type := 'shipping', in_city := row.city, exclude_email := row.email )
+            address(
+                type          := 'shipping',
+                in_city       := row.city,
+                in_country    := row.country,
+                exclude_email := row.email
+            )
         END;
         tel := format(
             '[[ home, %I ], [ mobile, %I ]]',
-            row.phone, COALESCE(row.fax, random_phone())
+            row.phone, COALESCE(row.fax, random_phone(row.country_code))
         );
 
         -- Add additional numbers.
@@ -193,7 +248,7 @@ BEGIN
             tel := tel || format(
                 '[[ %I, %I ]]',
                 ntypes[ floor( (random() * array_upper(ntypes, 1)) + 1 )::int],
-                random_phone()
+                random_phone(row.country_code)
             )::hstore;
         END LOOP;
 
