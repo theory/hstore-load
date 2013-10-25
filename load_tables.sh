@@ -63,8 +63,9 @@ if [ $USCOUNT != 0 ]; then
             web        TEXT
         );
     EOF
-    curl http://www.briandunning.com/sample-data/$USCOUNT.zip | gzcat \
-        | iconv -f MacRoman -t UTF-8 | psql -c 'COPY us FROM STDIN CSV HEADER'
+    curl http://www.briandunning.com/sample-data/us-$USCOUNT.zip > /tmp/us.zip
+    unzip -p /tmp/us.zip | iconv -f MacRoman -t UTF-8 | psql -c 'COPY us FROM STDIN CSV HEADER'
+    rm /tmp/us.zip
 fi
 
 if [ $CACOUNT != 0 ]; then
@@ -84,8 +85,9 @@ if [ $CACOUNT != 0 ]; then
             web        TEXT
         );
     EOF
-    curl http://www.briandunning.com/sample-data/$CACOUNT-canada.zip | gzcat \
-        | iconv -f MacRoman -t UTF-8 | psql -c 'COPY ca FROM STDIN CSV HEADER'
+    curl http://www.briandunning.com/sample-data/ca-$CACOUNT.zip > /tmp/ca.zip
+    unzip -p /tmp/ca.zip | iconv -f MacRoman -t UTF-8 | psql -c 'COPY ca FROM STDIN CSV HEADER'
+    rm /tmp/ca.zip
 fi
 
 if [ $UKCOUNT != 0 ]; then
@@ -107,6 +109,7 @@ if [ $UKCOUNT != 0 ]; then
             web        TEXT
         );
     EOF
-    curl http://www.briandunning.com/sample-data/$UKCOUNT-uk.zip | gzcat \
-        | iconv -f MacRoman -t UTF-8 | psql -c 'COPY uk FROM STDIN CSV'
+    curl http://www.briandunning.com/sample-data/uk-$UKCOUNT.zip > /tmp/uk.zip
+    unzip -p /tmp/uk.zip | iconv -f MacRoman -t UTF-8 | psql -c 'COPY uk FROM STDIN CSV'
+    rm /tmp/uk.zip
 fi
