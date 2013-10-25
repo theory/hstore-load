@@ -12,7 +12,7 @@ while getopts 'a:c:u:' opt; do
                     USCOUNT="$OPTARG"
                     ;;
                 *)
-                    echo >&2 "Unsupported American contact count; allowed: 500, 5000, 50000, or 35000"
+                    echo >&2 "Unsupported American contact count; allowed: 500, 5000, 50000, or 350000"
                     exit 2
                     ;;
             esac
