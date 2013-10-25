@@ -26,27 +26,57 @@ $$;
 CREATE OR REPLACE FUNCTION address(
     type          TEXT,
     in_city       TEXT,
+	in_country    TEXT,
     exclude_email TEXT
 ) RETURNS HSTORE LANGUAGE PLPGSQL AS $$
 DECLARE
     adr hstore;
 BEGIN
-    SELECT format('[[%I, {
-        "street-address" => %I,
-        "locality"       => %I,
-        "region"         => %I,
-        "postal-code"    => %I,
-        "country-name"   => %I
-    }]]', type, address, city, state, zip, 'USA')::hstore
-     INTO adr
-     FROM us
-    WHERE city = in_city
-      AND email <> exclude_email
-    ORDER BY random()
-    LIMIT 1;
+    IF in_country = 'USA' THEN
+	    SELECT format('[[%I, {
+	        "street-address" => %I,
+	        "locality"       => %I,
+	        "region"         => %I,
+	        "postal-code"    => %I,
+	        "country-name"   => %I
+	    }]]', type, address, city, state, zip, in_country)::hstore
+	     INTO adr
+	     FROM us
+	    WHERE city = in_city
+	      AND email <> exclude_email
+	    ORDER BY random()
+	    LIMIT 1;
+	ELSIF in_country = 'Canada' THEN
+	    SELECT format('[[%I, {
+	        "street-address" => %I,
+	        "locality"       => %I,
+	        "region"         => %I,
+	        "postal-code"    => %I,
+	        "country-name"   => %I
+	    }]]', type, address, city, province, zip, in_country)::hstore
+	     INTO adr
+	     FROM ca
+	    WHERE city = in_city
+	      AND email <> exclude_email
+	    ORDER BY random()
+	    LIMIT 1;
+	ELSE
+	    SELECT format('[[%I, {
+	        "street-address" => %I,
+	        "locality"       => %I,
+	        "region"         => %I,
+	        "postal-code"    => %I,
+	        "country-name"   => %I
+	    }]]', type, address, city, county, zip, 'United Kingdom')::hstore
+	     INTO adr
+	     FROM uk
+	    WHERE city = in_city
+	      AND email <> exclude_email
+	    ORDER BY random()
+	    LIMIT 1;
+	END IF;
     RETURN COALESCE(adr, '{}'::hstore);
 END;
-$$;
 
 CREATE OR REPLACE FUNCTION random_phone(
 ) RETURNS TEXT LANGUAGE plpgsql as $$
@@ -76,13 +106,14 @@ BEGIN
 END;
 $$;
 
+
 SET hstore.pretty_print          = TRUE;
 SET hstore.array_square_brackets = TRUE;
 SET hstore.root_hash_decorated   = TRUE;
 
 DO $$
 DECLARE
-    row    us;
+    row    record;
     name   HSTORE;
     adr    HSTORE;
     tel    HSTORE;
@@ -91,6 +122,7 @@ DECLARE
     geo    HSTORE;
     bday   HSTORE := '{}';
     xstuff HSTORE := '{}';
+    uname  TEXT;
     ncount INT[]  := '{0,0,0,1,1,1,1,2,2,2,3,3,4,5,6,7}';
     ntypes TEXT[] := '{mobile,cell,work,main,pager,cell,iPhone,mobile,personal,business}';
     etypes TEXT[] := '{work,personal,business}';
@@ -116,7 +148,19 @@ DECLARE
         'YYYY-MM'
     ];
 BEGIN
-    FOR row IN SELECT * FROM us LOOP
+    FOR row IN
+        SELECT first_name, last_name, company, address, city, state, zip,
+               us.email, phone, fax, web, 'USA' AS country
+          FROM us
+        UNION
+        SELECT first_name, last_name, company, address, city, province, zip,
+               ca.email, phone, fax, web, 'Canada' AS country
+          FROM ca
+        UNION
+        SELECT first_name, last_name, company, address, city, county, zip,
+               uk.email, phone, null, web, 'UK' AS country
+          FROM uk
+    LOOP
         name := hstore(ARRAY[
             'fn', format('%s %s', row.first_name, row.last_name),
             'org', row.company
@@ -133,7 +177,7 @@ BEGIN
                 "postal-code"    => %I,
                 "country-name"   => %I
             }]]',
-            row.address, row.city, row.state, row.zip, 'USA'
+            row.address, row.city, row.state, row.zip, row.country
         )::hstore || CASE WHEN random() > 0.5 THEN '[]'::hstore ELSE
             address( type := 'work', in_city := row.city, exclude_email := row.email )
         END || CASE WHEN random() > 0.05 THEN  '[]'::hstore ELSE
@@ -141,7 +185,7 @@ BEGIN
         END;
         tel := format(
             '[[ home, %I ], [ mobile, %I ]]',
-            row.phone, row.fax
+            row.phone, COALESCE(row.fax, random_phone())
         );
 
         -- Add additional numbers.
@@ -213,28 +257,29 @@ BEGIN
             )::hstore;
         END IF;
 
+        uname := LOWER(row.first_name || '_' || row.last_name);
         IF random() <= 0.7 THEN
-            xstuff := xstuff || hstore('x-twitter', row.first_name || '_' || row.last_name);
+            xstuff := xstuff || hstore('x-twitter', uname);
         END IF;
 
         IF random() <= 0.7 THEN
-            xstuff := xstuff || hstore('x-facebook', row.first_name || '_' || row.last_name);
+            xstuff := xstuff || hstore('x-facebook', uname);
         END IF;
 
         IF random() <= 0.4 THEN
-            xstuff := xstuff || hstore('x-aim', row.first_name || '_' || row.last_name);
+            xstuff := xstuff || hstore('x-aim', uname);
         END IF;
 
         IF random() <= 0.1 THEN
-            xstuff := xstuff || hstore('x-jabber', row.first_name || '_' || row.last_name);
+            xstuff := xstuff || hstore('x-jabber', uname);
         END IF;
 
         IF random() <= 0.2 THEN
-            xstuff := xstuff || hstore('x-google-talk', row.first_name || '_' || row.last_name);
+            xstuff := xstuff || hstore('x-google-talk', uname);
         END IF;
 
         IF random() <= 0.2 THEN
-            xstuff := xstuff || hstore('x-skype', row.first_name || '_' || row.last_name);
+            xstuff := xstuff || hstore('x-skype', uname);
         END IF;
 
         IF random() <= 0.2 THEN
